@@ -1,3 +1,5 @@
+### 执行sql生成excel然后通过邮件发送
+
 #### build项目
 ```shell script
 bash ./build.sh [local]
