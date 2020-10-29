@@ -6,7 +6,6 @@ port = 587
 
 [data]
 datasource = "root:root@tcp(127.0.0.1:3306)/xx?parseTime=true&loc=Local"
-sql = "select a.id ,a.phone_number,a.username ,a.register_type,a.register_channel,a.register_time,hour(a.register_time) as hour ,case when b.receiver_id is null then 0 else 1 end as spread from uc.user_account  a left join marketing.spread_record b on a.id=b.receiver_id where date(register_time)=curdate() order by register_time;"
 sql = "select * from user"
 name = "用户数据"
 mailto = "xx@xx.com;xy@xx.com"
