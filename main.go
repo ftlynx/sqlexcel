@@ -8,7 +8,6 @@ import (
 	"github.com/ftlynx/tsx/mysqlx"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/tealeg/xlsx"
-	"golang.org/x/text/encoding/simplifiedchinese"
 	"gopkg.in/gomail.v2"
 	"io/ioutil"
 	"mime"
