@@ -69,7 +69,7 @@ type myDB struct {
 	DB *sql.DB
 }
 
-func (d *myDB) QueryData(sql string) ([]string, []map[string]interface{}, error) {
+func (d *myDB) QueryDataToMap(sql string) ([]string, []map[string]interface{}, error) {
 	result := make([]map[string]interface{}, 0)
 	rows, err := d.DB.Query(sql)
 	if err != nil {
@@ -99,7 +99,35 @@ func (d *myDB) QueryData(sql string) ([]string, []map[string]interface{}, error)
 	return columns, result, err
 }
 
-func CreateExcel(columns []string, data []map[string]interface{}, filename string) error {
+type RowData []interface{}
+
+func (d *myDB) QueryDataToSlice(sql string) ([]string, []RowData, error) {
+	result := make([]RowData, 0)
+	rows, err := d.DB.Query(sql)
+	if err != nil {
+		return make([]string, 0), result, err
+	}
+	columns, err := rows.Columns()
+	if err != nil {
+		return columns, result, err
+	}
+
+	for rows.Next() {
+		//初始化
+		r := make(RowData, len(columns))
+		for index, _ := range r {
+			var tmp interface{}
+			r[index] = &tmp
+		}
+		if err := rows.Scan(r...); err != nil {
+			return columns, result, err
+		}
+		result = append(result, r)
+	}
+	return columns, result, err
+}
+
+func CreateExcelFromMap(columns []string, data []map[string]interface{}, filename string) error {
 	file := xlsx.NewFile()
 	sheet, err := file.AddSheet("sheet1")
 	if err != nil {
@@ -117,6 +145,29 @@ func CreateExcel(columns []string, data []map[string]interface{}, filename strin
 		for _, column := range columns {
 			cell := row.AddCell()
 			cell.Value = fmt.Sprintf("%s", v1[column])
+		}
+	}
+	return file.Save(filename)
+}
+
+func CreateExcelFromSlice(columns []string, data []RowData, filename string) error {
+	file := xlsx.NewFile()
+	sheet, err := file.AddSheet("sheet1")
+	if err != nil {
+		return err
+	}
+	row := sheet.AddRow()
+	row.SetHeightCM(1)
+	for _, v := range columns {
+		cell := row.AddCell()
+		cell.Value = v
+	}
+	for k1, _ := range data {
+		row := sheet.AddRow()
+		row.SetHeightCM(1)
+		for k2, _ := range columns {
+			cell := row.AddCell()
+			cell.Value = fmt.Sprintf("%s", *data[k1][k2].(*interface{}))
 		}
 	}
 	return file.Save(filename)
@@ -178,15 +229,27 @@ func main() {
 		Smtp:   cfg.EMail.Smtp,
 		Port:   cfg.EMail.Port,
 	}
+
+	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.Name)
 	sqldata := myDB{DB: db}
-	columns, result, err := sqldata.QueryData(cfg.Data.Sql)
+	// 使用slice
+	columns, result, err := sqldata.QueryDataToSlice(cfg.Data.Sql)
 	if err != nil {
 		panic(err)
 	}
-	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.Name)
-	if err := CreateExcel(columns, result, filename); err != nil {
+	if err := CreateExcelFromSlice(columns, result, filename); err != nil {
 		panic(err)
 	}
+	/*
+		// 使用map
+		columns, result, err := sqldata.QueryDataToMap(cfg.Data.Sql)
+		if err != nil {
+			panic(err)
+		}
+		if err := CreateExcelFromMap(columns, result, filename); err != nil {
+			panic(err)
+		}
+	*/
 	if err := email.Send(cfg.Data.Mailto, "", cfg.Data.Name, filename); err != nil {
 		panic(err)
 	}
