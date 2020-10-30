@@ -223,12 +223,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	email := connMail{
-		User:   cfg.EMail.User,
-		Passwd: cfg.EMail.Passwd,
-		Smtp:   cfg.EMail.Smtp,
-		Port:   cfg.EMail.Port,
-	}
 
 	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.Name)
 	sqldata := myDB{DB: db}
@@ -250,6 +244,12 @@ func main() {
 			panic(err)
 		}
 	*/
+	email := connMail{
+		User:   cfg.EMail.User,
+		Passwd: cfg.EMail.Passwd,
+		Smtp:   cfg.EMail.Smtp,
+		Port:   cfg.EMail.Port,
+	}
 	if err := email.Send(cfg.Data.Mailto, "", cfg.Data.Name, filename); err != nil {
 		panic(err)
 	}
