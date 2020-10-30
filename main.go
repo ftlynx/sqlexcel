@@ -8,6 +8,7 @@ import (
 	"github.com/ftlynx/tsx/mysqlx"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/tealeg/xlsx"
+	"golang.org/x/text/encoding/simplifiedchinese"
 	"gopkg.in/gomail.v2"
 	"io/ioutil"
 	"mime"
@@ -223,7 +224,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.Name)
 	sqldata := myDB{DB: db}
 	// 使用slice
