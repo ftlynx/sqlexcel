@@ -7,5 +7,8 @@ port = 587
 [data]
 datasource = "root:root@tcp(127.0.0.1:3306)/xx?parseTime=true&loc=Local"
 sql = "select * from user"
-name = "用户数据"
+subject = "用户数据"
 mailto = "xx@xx.com;xy@xx.com"
+cc = "xz@xx.com;zz@xx.com"
+plain_body = "hi, all\r\n\r\n  相关数据见附件"
+attach_name = "用户数据"

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/ftlynx/tsx"
 	"github.com/ftlynx/tsx/mysqlx"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/tealeg/xlsx"
@@ -25,8 +26,11 @@ type Config struct {
 type DataConfig struct {
 	Datasource string `toml:"datasource"`
 	Sql        string `toml:"sql"`
-	Name       string `toml:"name"`
+	Subject    string `toml:"subject"`
 	Mailto     string `toml:"mailto"`
+	Cc         string `toml:"cc"`
+	PlainBody  string `toml:"plain_body"`
+	AttachName string `toml:"attach_name"`
 }
 
 type EmailConf struct {
@@ -69,6 +73,8 @@ type myDB struct {
 	DB *sql.DB
 }
 
+type RowData []interface{}
+
 func (d *myDB) QueryDataToMap(sql string) ([]string, []map[string]interface{}, error) {
 	result := make([]map[string]interface{}, 0)
 	rows, err := d.DB.Query(sql)
@@ -80,26 +86,24 @@ func (d *myDB) QueryDataToMap(sql string) ([]string, []map[string]interface{}, e
 		return columns, result, err
 	}
 
-	cache := make([]interface{}, len(columns))
-	for index, _ := range cache {
-		var a interface{}
-		cache[index] = &a
+	r := make(RowData, len(columns))
+	for index, _ := range r {
+		var tmp interface{}
+		r[index] = &tmp
 	}
 
 	for rows.Next() {
-		if err := rows.Scan(cache...); err != nil {
+		if err := rows.Scan(r...); err != nil {
 			return columns, result, err
 		}
 		item := make(map[string]interface{})
-		for i, data := range cache {
+		for i, data := range r {
 			item[columns[i]] = *data.(*interface{})
 		}
 		result = append(result, item)
 	}
 	return columns, result, err
 }
-
-type RowData []interface{}
 
 func (d *myDB) QueryDataToSlice(sql string) ([]string, []RowData, error) {
 	result := make([]RowData, 0)
@@ -180,29 +184,30 @@ type connMail struct {
 	Port   int    `json:"port"`
 }
 
-func (m *connMail) Send(to string, cc string, subject string, attaFile string) error {
+// TODO  中文附件名在部分邮件客户端中显示乱码
+func (m *connMail) Send(to string, cc string, subject string, plain_body string, attach_file string) error {
 	d := gomail.NewDialer(m.Smtp, m.Port, m.User, m.Passwd)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	//设置消息
-	msg := gomail.NewMessage()
+	msg := gomail.NewMessage(gomail.SetCharset("UTF-8"), gomail.SetEncoding(gomail.Base64))
 	msg.SetHeader("From", msg.FormatAddress(m.User, "系统邮件"))
 	msg.SetHeader("To", strings.Split(to, ";")...)
-	msg.SetHeader("CC", cc)
+	if cc != "" {
+		msg.SetHeader("Cc", strings.Split(cc, ";")...)
+	}
 	msg.SetHeader("Subject", subject)
-	msg.SetBody("text/plain", "hi, all:\r\n\r\n  相关数据见附件")
+	msg.SetBody("text/plain", plain_body)
 
-	if attaFile != "" {
-		names := strings.Split(attaFile, "/")
+	if tsx.FileExists(attach_file) {
+		names := strings.Split(attach_file, "/")
 		name := names[len(names)-1]
-		msg.Attach(attaFile,
-			gomail.Rename(name),
-			gomail.SetHeader(map[string][]string{
-				"Content-Disposition": []string{
-					fmt.Sprintf(`attachment; filename="%s"`, mime.QEncoding.Encode("UTF-8", name)),
-				},
-			},
-			))
+		//处理附件文件名乱码
+		fileHeader := map[string][]string{
+			"Content-Type": {fmt.Sprintf(`text/plain; name="%s"`, mime.QEncoding.Encode("UTF-8", name))},
+			//"Content-Disposition": {fmt.Sprintf(`attachment; filename="%s"`, mime.QEncoding.Encode("UTF-8", name))},
+		}
+		msg.Attach(attach_file, gomail.Rename(name), gomail.SetHeader(fileHeader))
 	}
 
 	return d.DialAndSend(msg)
@@ -223,7 +228,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.Name)
+	filename := fmt.Sprintf("/tmp/%s.xlsx", cfg.Data.AttachName)
 	sqldata := myDB{DB: db}
 	// 使用slice
 	columns, result, err := sqldata.QueryDataToSlice(cfg.Data.Sql)
@@ -249,7 +254,7 @@ func main() {
 		Smtp:   cfg.EMail.Smtp,
 		Port:   cfg.EMail.Port,
 	}
-	if err := email.Send(cfg.Data.Mailto, "", cfg.Data.Name, filename); err != nil {
+	if err := email.Send(cfg.Data.Mailto, cfg.Data.Cc, cfg.Data.Subject, cfg.Data.PlainBody, filename); err != nil {
 		panic(err)
 	}
 	return
