@@ -184,7 +184,6 @@ type connMail struct {
 	Port   int    `json:"port"`
 }
 
-// TODO  中文附件名在部分邮件客户端中显示乱码
 func (m *connMail) Send(to string, cc string, subject string, plain_body string, attach_file string) error {
 	d := gomail.NewDialer(m.Smtp, m.Port, m.User, m.Passwd)
 	d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
