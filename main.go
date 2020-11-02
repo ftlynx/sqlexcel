@@ -203,7 +203,7 @@ func (m *connMail) Send(to string, cc string, subject string, plain_body string,
 		name := names[len(names)-1]
 		//处理附件文件名乱码
 		fileHeader := map[string][]string{
-			"Content-Type": {fmt.Sprintf(`text/plain; name="%s"`, mime.QEncoding.Encode("UTF-8", name))},
+			"Content-Type": {fmt.Sprintf(`text/plain; name="%s"`, mime.BEncoding.Encode("UTF-8", name))},
 			//"Content-Disposition": {fmt.Sprintf(`attachment; filename="%s"`, mime.QEncoding.Encode("UTF-8", name))},
 		}
 		msg.Attach(attach_file, gomail.Rename(name), gomail.SetHeader(fileHeader))
